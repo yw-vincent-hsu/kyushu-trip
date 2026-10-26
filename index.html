@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>九州自駕旅程</title>
+<meta name="theme-color" content="#FFFCF6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="九州旅">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
@@ -186,9 +192,6 @@ details.set summary{cursor:pointer;font-size:15px}
 details.set .hint{font-size:13px;opacity:.8;margin-top:4px}
 .toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,30px);opacity:0;background:var(--ink);color:var(--paper);border-radius:999px;padding:6px 18px;font-size:14px;z-index:80;transition:.25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
 .toast.on{transform:translate(-50%,0);opacity:1}
-.palette{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
-.palette div{border:var(--line);border-radius:14px;height:34px}
-.palette span{display:block;font-size:11px;text-align:center;margin-top:3px}
 footer{text-align:center;padding:30px 16px 44px;font-size:14px}
 footer svg{width:110px;display:block;margin:0 auto 6px}
 
@@ -424,14 +427,7 @@ footer svg{width:110px;display:block;margin:0 auto 6px}
 </div>
 <footer>
   <svg viewBox="-46 -48 92 84" aria-hidden="true"><g class="fl"><use href="#moo"/></g></svg>
-  <p>モーくん祝大家一路平安</p>
-  <div class="wrap">
-    <div class="palette" aria-label="本頁使用的日本傳統色">
-      <div style="background:var(--usugaki)"></div><div style="background:var(--mushikuri)"></div>
-      <div style="background:var(--urayanagi)"></div><div style="background:var(--kamenozoki)"></div>
-    </div>
-    <div class="palette"><span>薄柿</span><span>蒸栗</span><span>裏柳</span><span>瓶覗</span></div>
-  </div>
+  <p>哞醬（モーちゃん）祝大家一路平安</p>
 </footer>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
