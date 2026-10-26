@@ -396,6 +396,8 @@ footer svg{width:110px;display:block;margin:0 auto 6px}
 
 <details class="set" id="setbox">
   <summary>同步設定</summary>
+  <label class="f" for="s-paste">貼上分享連結（旅伴用，一次帶入全部設定）</label>
+  <div style="display:flex;gap:8px"><input class="inp" id="s-paste" type="text" placeholder="貼上同行的人傳來的分享連結" autocapitalize="off" autocomplete="off" style="flex:1;min-width:0"><button class="btn" type="button" id="s-apply">套用</button></div>
   <label class="f" for="s-api">Apps Script 網址</label>
   <input class="inp" id="s-api" type="url" placeholder="https://script.google.com/macros/s/…/exec">
   <label class="f" for="s-key">通行碼</label>
@@ -718,6 +720,14 @@ $('s-save').onclick=()=>{
   const m=splitNames($('s-mem').value);if(m.length)cfg.mem=m;
   const rt=Number($('s-rate').value);if(rt>0)cfg.rate=rt;
   LS.set('kyu-cfg',cfg);buildForm();renderLedger();convUpd();toast('設定已儲存');sync();
+};
+$('s-apply').onclick=()=>{
+  const t=$('s-paste').value.trim(),i=t.indexOf('#');
+  const q=new URLSearchParams(i>=0?t.slice(i+1):t);
+  if(!q.get('api')||!q.get('key')){toast('連結裡找不到網址或通行碼');return;}
+  cfg.api=q.get('api');cfg.key=q.get('key');
+  if(q.get('m'))cfg.mem=splitNames(q.get('m'));
+  LS.set('kyu-cfg',cfg);$('s-paste').value='';fillSettings();buildForm();renderLedger();convUpd();toast('已套用設定，同步中');sync();
 };
 $('s-share').onclick=async()=>{
   if(!cfg.api||!cfg.key){toast('先填入並儲存網址和通行碼');return;}
