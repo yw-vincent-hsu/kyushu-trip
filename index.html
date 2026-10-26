@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>九州自駕旅程</title>
+<meta name="theme-color" content="#FFFCF6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="九州旅">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
@@ -186,9 +192,6 @@ details.set summary{cursor:pointer;font-size:15px}
 details.set .hint{font-size:13px;opacity:.8;margin-top:4px}
 .toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,30px);opacity:0;background:var(--ink);color:var(--paper);border-radius:999px;padding:6px 18px;font-size:14px;z-index:80;transition:.25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
 .toast.on{transform:translate(-50%,0);opacity:1}
-.palette{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
-.palette div{border:var(--line);border-radius:14px;height:34px}
-.palette span{display:block;font-size:11px;text-align:center;margin-top:3px}
 footer{text-align:center;padding:30px 16px 44px;font-size:14px}
 footer svg{width:110px;display:block;margin:0 auto 6px}
 
@@ -233,7 +236,7 @@ footer svg{width:110px;display:block;margin:0 auto 6px}
       <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3"/>
       <feDisplacementMap in="SourceGraphic" scale="2.4"/>
     </filter>
-    <!-- 原創角色：阿蘇赤牛寶寶 モーくん -->
+    <!-- 原創角色：阿蘇赤牛寶寶 哞醬 -->
     <g id="moo">
       <path d="M-20 -26 q-6 -10 -2 -16 q4 4 8 12z M20 -26 q6 -10 2 -16 q-4 4 -8 12z" fill="#D9CD90" stroke="#3E3A39" stroke-width="3" stroke-linejoin="round"/>
       <ellipse class="ear l" cx="-32" cy="-14" rx="11" ry="6" fill="#ECB88A" stroke="#3E3A39" stroke-width="3"/>
@@ -257,7 +260,7 @@ footer svg{width:110px;display:block;margin:0 auto 6px}
 <div class="wrap">
 
 <header class="hero">
-<svg viewBox="0 0 360 240" role="img" aria-label="手繪風插圖：阿蘇火山冒煙、熊本城、海與天草大橋，赤牛寶寶モーくん開車兜風，天上有飛機">
+<svg viewBox="0 0 360 240" role="img" aria-label="手繪風插圖：阿蘇火山冒煙、熊本城、海與天草大橋，赤牛寶寶哞醬開車兜風，天上有飛機">
   <!-- 太陽 -->
   <g class="sun"><circle cx="300" cy="48" r="18" fill="#D9CD90" stroke="#3E3A39" stroke-width="3"/>
     <path d="M300 18v-7M300 85v-7M270 48h-7M337 48h-7M279 27l-5-5M326 74l-5-5M321 27l5-5M274 74l5-5" stroke="#3E3A39" stroke-width="3" stroke-linecap="round"/></g>
@@ -299,7 +302,7 @@ footer svg{width:110px;display:block;margin:0 auto 6px}
   <!-- 小草 -->
   <path class="grass" d="M38 176 q-2 -10 -6 -14 M42 176 q0 -12 4 -16" fill="none" stroke="#3E3A39" stroke-width="2.5" stroke-linecap="round"/>
   <path class="grass" style="animation-delay:-1s" d="M200 176 q-2 -9 -6 -12 M204 176 q1 -10 5 -14" fill="none" stroke="#3E3A39" stroke-width="2.5" stroke-linecap="round"/>
-  <!-- 車＋モーくん -->
+  <!-- 車＋哞醬 -->
   <g class="car"><g transform="translate(130,170)">
     <g class="bump">
       <g transform="translate(52,4) scale(.68)"><g class="fl"><use href="#moo"/></g></g>
@@ -424,14 +427,7 @@ footer svg{width:110px;display:block;margin:0 auto 6px}
 </div>
 <footer>
   <svg viewBox="-46 -48 92 84" aria-hidden="true"><g class="fl"><use href="#moo"/></g></svg>
-  <p>モーくん祝大家一路平安</p>
-  <div class="wrap">
-    <div class="palette" aria-label="本頁使用的日本傳統色">
-      <div style="background:var(--usugaki)"></div><div style="background:var(--mushikuri)"></div>
-      <div style="background:var(--urayanagi)"></div><div style="background:var(--kamenozoki)"></div>
-    </div>
-    <div class="palette"><span>薄柿</span><span>蒸栗</span><span>裏柳</span><span>瓶覗</span></div>
-  </div>
+  <p>哞醬（モーちゃん）祝大家一路平安</p>
 </footer>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
