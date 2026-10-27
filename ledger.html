@@ -68,6 +68,8 @@ h2.b::before{background:var(--kamenozoki)}h2.c::before{background:var(--urayanag
 .chips input:checked+span{background:var(--kamenozoki);transform:translateY(-2px)}
 .chips.cat input:checked+span{background:var(--usugaki)}
 .chips.who input:checked+span{background:var(--urayanagi)}
+.chips.share input:checked+span{background:var(--urayanagi)}
+.chips.cur input:checked+span{background:var(--mushikuri)}
 .chips input:focus-visible+span{outline:3px solid var(--kamenozoki);outline-offset:2px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .btn{border:var(--line);border-radius:999px;background:var(--paper);padding:3px 14px;font-size:14px;cursor:pointer;transition:transform .12s;text-decoration:none;display:inline-block}
@@ -191,7 +193,7 @@ nav.tabs button:focus-visible{outline:3px solid var(--kamenozoki)}
 
 <header class="top"><div class="in">
   <h1>九州旅費帳<small>2026.11.01 – 11.06</small></h1>
-  <a class="btn sm" href="index.html">行程</a>
+  <a class="btn sm" href="index.html" aria-label="回主頁">← 主頁</a>
   <button class="st" id="syncst" type="button" title="立即同步">未連線</button>
 </div></header>
 
@@ -227,7 +229,8 @@ nav.tabs button:focus-visible{outline:3px solid var(--kamenozoki)}
 <section class="view on" id="v-add" aria-label="記一筆">
 <form class="card" id="form" autocomplete="off">
   <label class="lbl" for="f-amt">金額</label>
-  <div class="amt"><span>¥</span><input class="inp" id="f-amt" type="number" inputmode="numeric" min="1" step="1" placeholder="0" required></div>
+  <div class="amt"><span id="f-sym">¥</span><input class="inp" id="f-amt" type="number" inputmode="decimal" min="0" step="any" placeholder="0" required></div>
+  <div class="chips cur" id="f-cur" role="radiogroup" aria-label="幣別" style="margin-top:8px"></div>
   <p class="conv" id="f-conv">≈ NT$0</p>
   <div class="quick" id="quick"></div>
   <label class="lbl" for="f-item">項目</label>
@@ -237,6 +240,8 @@ nav.tabs button:focus-visible{outline:3px solid var(--kamenozoki)}
   <div class="chips cat" id="f-cat" role="radiogroup" aria-label="類別"></div>
   <span class="lbl">誰付的</span>
   <div class="chips who" id="f-who" role="radiogroup" aria-label="付款人"></div>
+  <span class="lbl">分攤對象<small style="opacity:.7">（這筆要誰一起分，預設全員）</small></span>
+  <div class="chips share" id="f-share" role="group" aria-label="分攤對象"></div>
   <span class="lbl">付款方式</span>
   <div class="chips" id="f-pay" role="radiogroup" aria-label="付款方式"></div>
   <div class="row2" style="margin-top:6px">
@@ -266,7 +271,7 @@ nav.tabs button:focus-visible{outline:3px solid var(--kamenozoki)}
 <div class="card budget" id="budget"></div>
 <div class="card"><span class="lbl">各類別</span><ul class="bars" id="bars"></ul></div>
 <div class="card"><span class="lbl">每天花多少</span><div class="cols" id="cols"></div></div>
-<h2 class="d">三人分攤</h2>
+<h2 class="d">分攤結算</h2>
 <div class="card"><ul class="split" id="split"></ul><div class="settle" id="settle"></div></div>
 </section>
 
@@ -311,6 +316,7 @@ nav.tabs button:focus-visible{outline:3px solid var(--kamenozoki)}
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="ledger-core.js"></script>
 <script>
 /* ---------- 設定 ---------- */
 const CONFIG={
@@ -323,7 +329,8 @@ const CONFIG={
 const CATS=[['餐飲','食','var(--usugaki)'],['交通','車','var(--mushikuri)'],['住宿','宿','var(--kamenozoki)'],['門票','票','var(--urayanagi)'],['購物','買','var(--usugaki)'],['其他','他','var(--mushikuri)']];
 const PAYS=['現金','信用卡','IC 卡'];
 const DATES=[['行前','行前',''],['2026-11-01','11/1','日'],['2026-11-02','11/2','一'],['2026-11-03','11/3','二'],['2026-11-04','11/4','三'],['2026-11-05','11/5','四'],['2026-11-06','11/6','五']];
-const QUICK=[500,1000,3000,5000];
+const QUICK={JPY:[500,1000,3000,5000],TWD:[100,500,1000,3000]};
+const CURS=[['JPY','日圓 ¥'],['TWD','台幣 NT$']];
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -347,6 +354,9 @@ let syncing=false,filter='all',lastErr='',manual=false;
 const rate=()=>sheetRate||Number(cfg.rate)||CONFIG.RATE;
 const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
 const twd=n=>'NT$'+Math.round(n*rate()).toLocaleString('zh-TW');
+const jpy=r=>LedgerCore.jpy(r,rate());
+const fmtAmt=r=>r.cur==='TWD'?'NT$'+Math.round(r.amt).toLocaleString('zh-TW'):yen(r.amt);
+const altAmt=r=>r.cur==='TWD'?yen(jpy(r)):twd(r.amt);
 const dInfo=d=>DATES.find(x=>x[0]===d)||[d,d,''];
 const catOf=c=>CATS.find(x=>x[0]===c)||CATS[5];
 const todayTW=()=>new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
@@ -354,8 +364,8 @@ let toastT;function toast(m){const t=$('toast');t.textContent=m;t.classList.add(
 
 function records(){
   const delIds=new Set(queue.filter(q=>q.action==='delete').map(q=>q.id));
-  const list=server.filter(r=>!delIds.has(r.id)).map(r=>Object.assign({},r,{amt:Number(r.amt)||0,pending:false}));
-  queue.filter(q=>q.action==='add').forEach(q=>list.push(Object.assign({},q.item,{pending:true})));
+  const list=server.filter(r=>!delIds.has(r.id)).map(r=>Object.assign({},r,{amt:Number(r.amt)||0,cur:r.cur==='TWD'?'TWD':'JPY',share:r.share||'',pending:false}));
+  queue.filter(q=>q.action==='add').forEach(q=>list.push(Object.assign({cur:'JPY',share:''},q.item,{pending:true})));
   const ord=d=>d==='行前'?'0':d;
   return list.sort((a,b)=>ord(b.date).localeCompare(ord(a.date))||String(b.created).localeCompare(String(a.created)));
 }
@@ -380,23 +390,38 @@ function buildForm(){
   chipGroup($('f-pay'),'pay',PAYS,LS.get('kyu-pay','現金'));
   const td=todayTW(),def=DATES.some(x=>x[0]===td)?td:(td<'2026-11-01'?'行前':'2026-11-06');
   $('f-date').innerHTML=DATES.map(([v,l,w],i)=>`<option value="${v}" ${v===def?'selected':''}>${i?`${l}（${w}）`:'行前預訂'}</option>`).join('');
-  $('quick').innerHTML=QUICK.map(n=>`<button type="button" class="btn sm" data-q="${n}">+${n.toLocaleString()}</button>`).join('')+'<button type="button" class="btn sm" data-q="0">清除</button>';
+  buildShare();setCur(def==='行前'?'TWD':'JPY');
 }
+function buildShare(){
+  $('f-share').innerHTML=cfg.mem.map(n=>`<label><input type="checkbox" name="sh" value="${esc(n)}" checked><span>${esc(n)}</span></label>`).join('');
+}
+const curNow=()=>(document.querySelector('input[name="cur"]:checked')||{}).value||'JPY';
+function setCur(c){
+  chipGroup($('f-cur'),'cur',CURS.map(x=>x[0]),c);
+  [...$('f-cur').querySelectorAll('span')].forEach((sp,i)=>sp.textContent=CURS[i][1]);
+  $('f-sym').textContent=c==='TWD'?'NT$':'¥';
+  $('quick').innerHTML=QUICK[c].map(n=>`<button type="button" class="btn sm" data-q="${n}">+${n.toLocaleString()}</button>`).join('')+'<button type="button" class="btn sm" data-q="0">清除</button>';
+  convUpd();
+}
+$('f-cur').addEventListener('change',()=>setCur(curNow()));
+$('f-date').addEventListener('change',()=>setCur($('f-date').value==='行前'?'TWD':'JPY'));
 $('quick').addEventListener('click',e=>{const b=e.target.closest('[data-q]');if(!b)return;const q=Number(b.dataset.q);$('f-amt').value=q?(Number($('f-amt').value)||0)+q:'';convUpd();});
-function convUpd(){$('f-conv').textContent='≈ '+twd(Number($('f-amt').value)||0)+'（匯率 '+rate()+'）';}
+function convUpd(){const a=Number($('f-amt').value)||0;$('f-conv').textContent='≈ '+(curNow()==='TWD'?yen(a/rate()):twd(a))+'（匯率 '+rate()+'）';}
 $('f-amt').addEventListener('input',convUpd);
 function sugg(){const s=[...new Set(records().map(r=>r.item).filter(Boolean))].slice(0,30);$('f-sugg').innerHTML=s.map(x=>`<option value="${esc(x)}">`).join('');}
 $('form').addEventListener('submit',e=>{
   e.preventDefault();
-  const amt=Math.round(Number($('f-amt').value));
+  const cur=curNow(),amt=cur==='TWD'?Math.round(Number($('f-amt').value)*100)/100:Math.round(Number($('f-amt').value));
   if(!(amt>0)){toast('請輸入金額');$('f-amt').focus();return;}
+  const picked=[...document.querySelectorAll('input[name="sh"]:checked')].map(x=>x.value);
+  if(!picked.length){toast('至少選一位分攤對象');return;}
   const v=n=>(document.querySelector(`input[name="${n}"]:checked`)||{}).value||'';
-  const item={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:new Date().toISOString(),date:$('f-date').value,cat:v('cat'),item:$('f-item').value.trim(),amt,payer:v('who'),method:v('pay'),note:$('f-note').value.trim()};
+  const item={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:new Date().toISOString(),date:$('f-date').value,cat:v('cat'),item:$('f-item').value.trim(),amt,cur,payer:v('who'),share:picked.length===cfg.mem.length?'':picked.join(','),method:v('pay'),note:$('f-note').value.trim()};
   queue.push({action:'add',item});LS.set('kyu-queue',queue);
   LS.set('kyu-who',item.payer);LS.set('kyu-pay',item.method);
-  $('f-amt').value='';$('f-item').value='';$('f-note').value='';convUpd();
+  $('f-amt').value='';$('f-item').value='';$('f-note').value='';buildShare();convUpd();
   const m=$('moohop');m.classList.remove('hop');void m.getBBox();m.classList.add('hop');
-  render();toast('記下了：'+(item.item||item.cat)+' '+yen(amt));
+  render();toast('記下了：'+(item.item||item.cat)+' '+fmtAmt(item));
   sync();
 });
 
@@ -417,10 +442,10 @@ document.addEventListener('click',e=>{
 const emptyArt='<svg viewBox="-46 -48 92 84" aria-hidden="true"><g class="fl"><use href="#moo"/></g></svg>';
 function recLi(r){
   const c=catOf(r.cat),d=dInfo(r.date);
-  return `<li class="${r.pending?'pending':''}"><span class="ic" style="background:${c[2]}">${c[1]}</span><span class="mid"><b>${esc(r.item||r.cat)}</b><small>${esc(d[1])}・${esc(r.payer)}・${esc(r.method)}${r.note?'・'+esc(r.note):''}${r.pending?'・待同步':''}</small></span><span class="yen">${yen(r.amt)}<small>${twd(r.amt)}</small></span><button type="button" class="del" data-id="${esc(r.id)}" aria-label="刪除 ${esc(r.item)}">刪除</button></li>`;
+  return `<li class="${r.pending?'pending':''}"><span class="ic" style="background:${c[2]}">${c[1]}</span><span class="mid"><b>${esc(r.item||r.cat)}</b><small>${esc(d[1])}・${esc(r.payer)}・${esc(r.method)}${r.share?'・分攤 '+esc(r.share.split(',').join('、')):''}${r.note?'・'+esc(r.note):''}${r.pending?'・待同步':''}</small></span><span class="yen">${fmtAmt(r)}<small>${altAmt(r)}</small></span><button type="button" class="del" data-id="${esc(r.id)}" aria-label="刪除 ${esc(r.item)}">刪除</button></li>`;
 }
 function render(){
-  const all=records(),tot=all.reduce((s,r)=>s+r.amt,0);
+  const all=records(),tot=all.reduce((s,r)=>s+jpy(r),0);
   $('h-jpy').textContent=yen(tot);$('h-twd').textContent='≈ '+twd(tot);
   $('s-jpy').textContent=yen(tot);$('s-twd').textContent=twd(tot);
 
@@ -434,7 +459,7 @@ function render(){
   if(!shown.length){$('list').innerHTML=`<p class="empty">${emptyArt}這天還沒有記錄</p>`;}
   else{
     const groups=[];shown.forEach(r=>{let g=groups.find(x=>x.d===r.date);if(!g)groups.push(g={d:r.date,rs:[]});g.rs.push(r);});
-    $('list').innerHTML=groups.map(g=>{const d=dInfo(g.d),i=DATES.findIndex(x=>x[0]===g.d),s=g.rs.reduce((a,r)=>a+r.amt,0);
+    $('list').innerHTML=groups.map(g=>{const d=dInfo(g.d),i=DATES.findIndex(x=>x[0]===g.d),s=g.rs.reduce((a,r)=>a+jpy(r),0);
       return `<div class="dayh"><span>${i>0?`${d[1]}（${d[2]}）Day ${i}`:esc(d[1])}</span><span>${yen(s)}</span></div><ul class="recs">${g.rs.map(recLi).join('')}</ul>`;}).join('');
   }
 
@@ -447,24 +472,19 @@ function render(){
   }else $('budget').style.display='none';
 
   /* 類別 */
-  const byCat=CATS.map(c=>[c,all.filter(r=>r.cat===c[0]).reduce((s,r)=>s+r.amt,0)]);
+  const byCat=CATS.map(c=>[c,all.filter(r=>r.cat===c[0]).reduce((s,r)=>s+jpy(r),0)]);
   const max=Math.max(1,...byCat.map(x=>x[1]));
   $('bars').innerHTML=byCat.map(([c,v])=>`<li><span>${c[0]}</span><span class="bar"><i style="width:${v/max*100}%;background:${c[2]}"></i></span><span class="v">${yen(v)}</span></li>`).join('');
 
   /* 每日 */
-  const byDay=DATES.map(d=>[d,all.filter(r=>r.date===d[0]).reduce((s,r)=>s+r.amt,0)]);
+  const byDay=DATES.map(d=>[d,all.filter(r=>r.date===d[0]).reduce((s,r)=>s+jpy(r),0)]);
   const dmax=Math.max(1,...byDay.map(x=>x[1])),td=todayTW();
   $('cols').innerHTML=byDay.map(([d,v])=>`<div class="${d[0]===td?'today':''}" title="${d[1]} ${yen(v)}"><span>${v?(v>=10000?(v/10000).toFixed(1)+'萬':Math.round(v/1000)+'k'):''}</span><i style="height:${v/dmax*70}%"></i><span>${d[1]}</span></div>`).join('');
 
   /* 分攤 */
-  const names=[...new Set([...cfg.mem,...all.map(r=>r.payer).filter(Boolean)])];
-  const share=names.length?tot/names.length:0;
-  const paid=names.map(n=>[n,all.filter(r=>r.payer===n).reduce((s,r)=>s+r.amt,0)]);
-  $('split').innerHTML=paid.map(([n,p])=>`<li><span>${esc(n)} 已付</span><span>${yen(p)}</span></li>`).join('')+`<li><span>平均每人</span><span>${yen(share)}</span></li>`;
-  const cr=paid.map(([n,p])=>[n,p-share]).filter(x=>x[1]>0.5).sort((a,b)=>b[1]-a[1]);
-  const db=paid.map(([n,p])=>[n,share-p]).filter(x=>x[1]>0.5).sort((a,b)=>b[1]-a[1]);
-  const lines=[];let i=0,j=0;
-  while(i<db.length&&j<cr.length){const m=Math.min(db[i][1],cr[j][1]);lines.push(`<div class="pay">${esc(db[i][0])} → ${esc(cr[j][0])}<b>${yen(m)}</b></div>`);db[i][1]-=m;cr[j][1]-=m;if(db[i][1]<0.5)i++;if(cr[j][1]<0.5)j++;}
+  const sm=LedgerCore.summary(all,cfg.mem,rate());
+  $('split').innerHTML=sm.rows.map(x=>`<li><span>${esc(x.name)}</span><span>已付 ${yen(x.paid)}・應分攤 ${yen(x.owed)}</span></li>`).join('');
+  const lines=sm.lines.map(l=>`<div class="pay">${esc(l.from)} → ${esc(l.to)}<b>${yen(l.amt)}</b></div>`);
   $('settle').innerHTML=tot?(lines.length?'<span class="lbl" style="margin-top:0">回台灣前這樣結清</span>'+lines.join(''):'<p>目前大家付得一樣多。</p>'):'';
 
   sugg();syncUI();
