@@ -86,7 +86,13 @@ h2.b::before{background:var(--kamenozoki)}h2.c::before{background:var(--urayanag
 .dayh{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;margin:14px 2px 6px;padding-bottom:4px;border-bottom:2px dashed var(--ink)}
 .dayh:first-child{margin-top:0}
 .recs{list-style:none}
-.recs li{display:flex;gap:10px;align-items:center;border:var(--line);border-radius:18px;padding:8px 12px;margin-bottom:8px;background:var(--paper)}
+.recs li{border:var(--line);border-radius:18px;padding:8px 12px;margin-bottom:8px;background:var(--paper)}
+.recs .row{display:flex;gap:10px;align-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.recs .detail{display:none;margin-top:8px;padding:8px 2px 2px 44px;border-top:2px dashed var(--ink);font-size:13px;line-height:1.7}
+.recs li.open .detail{display:block}
+.recs .detail .acts{display:flex;gap:8px;margin-top:8px}
+.recs .detail .acts button{border:2.5px solid var(--ink);border-radius:999px;background:var(--paper);font-size:12px;padding:2px 14px;cursor:pointer;font-family:inherit;color:inherit}
+.recs .detail .acts .edit{background:var(--urayanagi)}
 .recs li.pending{border-style:dashed}
 .ic{flex:0 0 34px;height:34px;border:2.5px solid var(--ink);border-radius:11px;display:grid;place-items:center;font-size:13px}
 .recs .mid{flex:1;min-width:0}
@@ -94,8 +100,7 @@ h2.b::before{background:var(--kamenozoki)}h2.c::before{background:var(--urayanag
 .recs .mid small{font-size:12px;opacity:.75}
 .recs .yen{text-align:right;font-size:16px;white-space:nowrap}
 .recs .yen small{display:block;font-size:11px;opacity:.7}
-.del{flex:0 0 auto;border:2.5px solid var(--ink);border-radius:999px;background:var(--paper);font-size:12px;padding:0 8px;cursor:pointer}
-.del.arm{background:var(--usugaki)}
+.recs .detail .del.arm{background:var(--usugaki)}
 .empty{text-align:center;padding:18px 0;font-size:14px}
 .empty svg{width:96px;display:block;margin:0 auto 6px}
 
@@ -248,7 +253,8 @@ nav.tabs button:focus-visible{outline:3px solid var(--kamenozoki)}
     <div><label class="lbl" for="f-date">日期</label><select class="inp" id="f-date"></select></div>
     <div><label class="lbl" for="f-note">備註</label><input class="inp" id="f-note" type="text" maxlength="60" placeholder="選填"></div>
   </div>
-  <button class="btn main" type="submit">記一筆</button>
+  <button class="btn main" type="submit" id="f-submit">記一筆</button>
+  <button class="btn" type="button" id="f-cancel" style="display:none;margin-top:8px;width:100%">取消編輯</button>
 </form>
 <h2 class="b">最近記的</h2>
 <ul class="recs" id="recent"></ul>
@@ -416,23 +422,62 @@ $('form').addEventListener('submit',e=>{
   const picked=[...document.querySelectorAll('input[name="sh"]:checked')].map(x=>x.value);
   if(!picked.length){toast('至少選一位分攤對象');return;}
   const v=n=>(document.querySelector(`input[name="${n}"]:checked`)||{}).value||'';
+  const old=editId?records().find(r=>r.id===editId):null;
   const item={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:new Date().toISOString(),date:$('f-date').value,cat:v('cat'),item:$('f-item').value.trim(),amt,cur,payer:v('who'),share:picked.length===cfg.mem.length?'':picked.join(','),method:v('pay'),note:$('f-note').value.trim()};
+  if(old){item.created=old.created||item.created;dropRec(old.id);}
   queue.push({action:'add',item});LS.set('kyu-queue',queue);
   LS.set('kyu-who',item.payer);LS.set('kyu-pay',item.method);
+  const wasEdit=!!editId;
+  endEdit();
   $('f-amt').value='';$('f-item').value='';$('f-note').value='';buildShare();convUpd();
   const m=$('moohop');m.classList.remove('hop');void m.getBBox();m.classList.add('hop');
-  render();toast('記下了：'+(item.item||item.cat)+' '+fmtAmt(item));
+  render();toast((wasEdit?'已更新：':'記下了：')+(item.item||item.cat)+' '+fmtAmt(item));
   sync();
 });
 
 /* ---------- 刪除 ---------- */
-function removeRec(id){
+function dropRec(id){
   const i=queue.findIndex(q=>q.action==='add'&&q.item.id===id);
   if(i>=0)queue.splice(i,1);else queue.push({action:'delete',id});
-  LS.set('kyu-queue',queue);render();toast('已刪除');sync();
+  LS.set('kyu-queue',queue);
 }
+function removeRec(id){
+  dropRec(id);openIds.delete(id);render();toast('已刪除');sync();
+}
+
+/* ---------- 編輯 ---------- */
+let editId=null;
+function endEdit(){
+  editId=null;$('f-submit').textContent='記一筆';$('f-cancel').style.display='none';
+}
+function startEdit(id){
+  const r=records().find(x=>x.id===id);if(!r)return;
+  editId=id;
+  setCur(r.cur);
+  $('f-amt').value=r.amt;$('f-item').value=r.item||'';$('f-note').value=r.note||'';
+  const pick=(n,v)=>{const el=[...document.querySelectorAll(`input[name="${n}"]`)].find(x=>x.value===v);if(el)el.checked=true;};
+  pick('cat',r.cat);pick('who',r.payer);pick('pay',r.method);
+  $('f-date').value=r.date;
+  const sh=r.share?splitNames(r.share):cfg.mem;
+  document.querySelectorAll('input[name="sh"]').forEach(x=>x.checked=sh.includes(x.value));
+  convUpd();
+  $('f-submit').textContent='更新這筆';$('f-cancel').style.display='';
+  go('v-add');
+  $('form').scrollIntoView({block:'start'});
+  toast('編輯中：改好後按「更新這筆」');
+}
+$('f-cancel').onclick=()=>{endEdit();$('f-amt').value='';$('f-item').value='';$('f-note').value='';buildShare();convUpd();};
+const openIds=new Set();
 document.addEventListener('click',e=>{
-  const b=e.target.closest('.del');if(!b)return;
+  const ed=e.target.closest('.edit');if(ed){startEdit(ed.dataset.id);return;}
+  const b=e.target.closest('.del');
+  if(!b){
+    const row=e.target.closest('.recs .row');if(!row)return;
+    const li=row.parentElement,id=li.dataset.id;
+    li.classList.toggle('open');
+    if(li.classList.contains('open'))openIds.add(id);else openIds.delete(id);
+    return;
+  }
   if(b.classList.contains('arm')){removeRec(b.dataset.id);return;}
   b.classList.add('arm');b.textContent='確定？';
   setTimeout(()=>{if(b.isConnected){b.classList.remove('arm');b.textContent='刪除';}},3000);
@@ -442,7 +487,10 @@ document.addEventListener('click',e=>{
 const emptyArt='<svg viewBox="-46 -48 92 84" aria-hidden="true"><g class="fl"><use href="#moo"/></g></svg>';
 function recLi(r){
   const c=catOf(r.cat),d=dInfo(r.date);
-  return `<li class="${r.pending?'pending':''}"><span class="ic" style="background:${c[2]}">${c[1]}</span><span class="mid"><b>${esc(r.item||r.cat)}</b><small>${esc(d[1])}・${esc(r.payer)}・${esc(r.method)}${r.share?'・分攤 '+esc(r.share.split(',').join('、')):''}${r.note?'・'+esc(r.note):''}${r.pending?'・待同步':''}</small></span><span class="yen">${fmtAmt(r)}<small>${altAmt(r)}</small></span><button type="button" class="del" data-id="${esc(r.id)}" aria-label="刪除 ${esc(r.item)}">刪除</button></li>`;
+  const twdTxt=r.cur==='TWD'?fmtAmt(r):altAmt(r),jpyTxt=r.cur==='TWD'?altAmt(r):fmtAmt(r);
+  const dateTxt=r.date==='行前'?'行前':d[1]+(d[2]?'（'+d[2]+'）':'');
+  const share=r.share?splitNames(r.share).join('、'):'全員';
+  return `<li class="${r.pending?'pending':''}${openIds.has(r.id)?' open':''}" data-id="${esc(r.id)}"><div class="row"><span class="ic" style="background:${c[2]}">${c[1]}</span><span class="mid"><b>${esc(r.item||r.cat)}</b></span><span class="yen">${twdTxt}<small>${jpyTxt}</small></span></div><div class="detail"><div>${esc(dateTxt)}${r.pending?'（待同步）':''}</div><div>付款人：${esc(r.payer)}</div><div>分攤：${esc(share)}</div>${r.note?`<div>備註：${esc(r.note)}</div>`:''}<div class="acts"><button type="button" class="edit" data-id="${esc(r.id)}">編輯</button><button type="button" class="del" data-id="${esc(r.id)}" aria-label="刪除 ${esc(r.item)}">刪除</button></div></div></li>`;
 }
 function render(){
   const all=records(),tot=all.reduce((s,r)=>s+jpy(r),0);
